@@ -8,6 +8,43 @@ static bool bitmap_get(const uint8_t *bitmap, uint16_t width, uint16_t x, uint16
     return (bitmap[index >> 3] & (uint8_t)(1U << (index & 7U))) != 0U;
 }
 
+static void dilate_cross(uint8_t output[DIGIT_INPUT_SIZE])
+{
+    uint8_t source[DIGIT_INPUT_SIZE];
+    memcpy(source, output, DIGIT_INPUT_SIZE);
+
+    for (uint16_t y = 0; y < DIGIT_INPUT_HEIGHT; ++y)
+    {
+        for (uint16_t x = 0; x < DIGIT_INPUT_WIDTH; ++x)
+        {
+            if (source[(uint32_t)y * DIGIT_INPUT_WIDTH + x] == 0U)
+            {
+                continue;
+            }
+
+            static const int8_t offsets[][2] = {
+                {0, 0},
+                {-1, 0},
+                {1, 0},
+                {0, -1},
+                {0, 1},
+            };
+
+            for (uint8_t i = 0; i < (uint8_t)(sizeof(offsets) / sizeof(offsets[0])); ++i)
+            {
+                int16_t nx = (int16_t)x + offsets[i][0];
+                int16_t ny = (int16_t)y + offsets[i][1];
+                if ((nx >= 0) && (ny >= 0) &&
+                    (nx < (int16_t)DIGIT_INPUT_WIDTH) &&
+                    (ny < (int16_t)DIGIT_INPUT_HEIGHT))
+                {
+                    output[(uint32_t)ny * DIGIT_INPUT_WIDTH + (uint16_t)nx] = 255U;
+                }
+            }
+        }
+    }
+}
+
 void DigitPreprocess_Clear(uint8_t output[DIGIT_INPUT_SIZE])
 {
     memset(output, 0, DIGIT_INPUT_SIZE);
@@ -36,8 +73,8 @@ bool DigitPreprocess_FromBitmap(const uint8_t *bitmap,
         return false;
     }
 
-    uint16_t scaled_w = (uint16_t)(((uint32_t)src_w * 20U + (max_dim / 2U)) / max_dim);
-    uint16_t scaled_h = (uint16_t)(((uint32_t)src_h * 20U + (max_dim / 2U)) / max_dim);
+    uint16_t scaled_w = (uint16_t)(((uint32_t)src_w * 22U + (max_dim / 2U)) / max_dim);
+    uint16_t scaled_h = (uint16_t)(((uint32_t)src_h * 22U + (max_dim / 2U)) / max_dim);
     if (scaled_w == 0U)
     {
         scaled_w = 1U;
@@ -79,5 +116,6 @@ bool DigitPreprocess_FromBitmap(const uint8_t *bitmap,
         }
     }
 
+    dilate_cross(output);
     return true;
 }

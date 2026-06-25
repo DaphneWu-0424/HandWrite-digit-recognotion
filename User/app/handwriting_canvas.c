@@ -6,16 +6,21 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CANVAS_X 0U
-#define CANVAS_Y 72U
-#define CANVAS_SIZE 240U
+#define CANVAS_X 8U
+#define CANVAS_Y 96U
+#define CANVAS_SIZE 224U
 #define CANVAS_BITS (CANVAS_SIZE * CANVAS_SIZE)
-#define CANVAS_BYTES (CANVAS_BITS / 8U)
+#define CANVAS_BYTES ((CANVAS_BITS + 7U) / 8U)
 
-#define CLEAR_X 168U
-#define CLEAR_Y 44U
+#define OK_X 64U
+#define OK_Y 64U
+#define OK_W 48U
+#define OK_H 24U
+
+#define CLEAR_X 166U
+#define CLEAR_Y 64U
 #define CLEAR_W 66U
-#define CLEAR_H 22U
+#define CLEAR_H 24U
 
 #define PREVIEW_X 4U
 #define PREVIEW_Y 8U
@@ -25,6 +30,7 @@ static uint8_t s_canvas[CANVAS_BYTES];
 static DigitBoundingBox s_bbox;
 static bool s_stroke_active;
 static bool s_stroke_complete;
+static bool s_touch_was_down;
 static int16_t s_prev_x;
 static int16_t s_prev_y;
 
@@ -123,15 +129,19 @@ static void clear_canvas_data(void)
     memset(&s_bbox, 0, sizeof(s_bbox));
     s_stroke_active = false;
     s_stroke_complete = false;
+    s_touch_was_down = false;
     s_prev_x = -1;
     s_prev_y = -1;
 }
 
-static void draw_button(void)
+static void draw_buttons(void)
 {
     LCD_SetColors(WHITE, BLACK);
+    ILI9341_DrawRectangle(OK_X, OK_Y, OK_W, OK_H, 0);
+    ILI9341_DispString_EN(OK_X + 14U, OK_Y + 5U, "OK");
+
     ILI9341_DrawRectangle(CLEAR_X, CLEAR_Y, CLEAR_W, CLEAR_H, 0);
-    ILI9341_DispString_EN(CLEAR_X + 9U, CLEAR_Y + 4U, "Clear");
+    ILI9341_DispString_EN(CLEAR_X + 9U, CLEAR_Y + 5U, "Clear");
 }
 
 static void draw_preview(const uint8_t input[DIGIT_INPUT_SIZE])
@@ -161,7 +171,7 @@ static void draw_preview(const uint8_t input[DIGIT_INPUT_SIZE])
 
 void HandwritingCanvas_ShowMessage(const char *line1, const char *line2)
 {
-    ILI9341_Clear(64, 4, 100, 60);
+    ILI9341_Clear(64, 4, 168, 54);
     if (line1 != NULL)
     {
         ILI9341_DispString_EN(66, 8, (char *)line1);
@@ -184,8 +194,8 @@ void HandwritingCanvas_Init(void)
     clear_canvas_data();
     LCD_SetColors(WHITE, BLACK);
     ILI9341_Clear(0, 0, LCD_X_LENGTH, LCD_Y_LENGTH);
-    HandwritingCanvas_ShowMessage("Write digit", "Release to infer");
-    draw_button();
+    HandwritingCanvas_ShowMessage("Write digit", "Press OK when done");
+    draw_buttons();
     ILI9341_DrawRectangle(CANVAS_X, CANVAS_Y, CANVAS_SIZE, CANVAS_SIZE, 0);
 }
 
@@ -206,14 +216,32 @@ HandwritingEvent HandwritingCanvas_ProcessTouch(uint8_t output[DIGIT_INPUT_SIZE]
             return HANDWRITING_EVENT_NONE;
         }
 
-        if (point_in_rect(touch.x, touch.y, CLEAR_X, CLEAR_Y, CLEAR_W, CLEAR_H))
+        if (!s_touch_was_down &&
+            point_in_rect(touch.x, touch.y, CLEAR_X, CLEAR_Y, CLEAR_W, CLEAR_H))
         {
             HandwritingCanvas_Init();
             return HANDWRITING_EVENT_CLEARED;
         }
 
+        if (!s_touch_was_down &&
+            point_in_rect(touch.x, touch.y, OK_X, OK_Y, OK_W, OK_H))
+        {
+            s_touch_was_down = true;
+            if (s_stroke_complete &&
+                DigitPreprocess_FromBitmap(s_canvas, CANVAS_SIZE, CANVAS_SIZE, s_bbox, output))
+            {
+                draw_preview(output);
+                return HANDWRITING_EVENT_DIGIT_READY;
+            }
+
+            HandwritingCanvas_ShowMessage("No stroke", "Write first");
+            draw_buttons();
+            return HANDWRITING_EVENT_NONE;
+        }
+
         if (!point_in_canvas(touch.x, touch.y))
         {
+            s_touch_was_down = true;
             return HANDWRITING_EVENT_NONE;
         }
 
@@ -236,21 +264,17 @@ HandwritingEvent HandwritingCanvas_ProcessTouch(uint8_t output[DIGIT_INPUT_SIZE]
         s_prev_x = touch.x;
         s_prev_y = touch.y;
         s_stroke_complete = true;
+        s_touch_was_down = true;
         return HANDWRITING_EVENT_NONE;
     }
+
+    s_touch_was_down = false;
 
     if (s_stroke_active)
     {
         s_stroke_active = false;
         s_prev_x = -1;
         s_prev_y = -1;
-
-        if (s_stroke_complete &&
-            DigitPreprocess_FromBitmap(s_canvas, CANVAS_SIZE, CANVAS_SIZE, s_bbox, output))
-        {
-            draw_preview(output);
-            return HANDWRITING_EVENT_DIGIT_READY;
-        }
     }
 
     return HANDWRITING_EVENT_NONE;

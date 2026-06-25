@@ -35,7 +35,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train a single-layer MNIST perceptron.")
     parser.add_argument("--data-dir", default="data", help="MNIST download/cache directory")
     parser.add_argument("--output", default="perceptron_mnist.npz", help="Output .npz weights file")
-    parser.add_argument("--epochs", type=int, default=8)
+    parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=0.1)
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
