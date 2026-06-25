@@ -1,0 +1,84 @@
+# STM32 / embedded build output
+build/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+mx.scratch/
+
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.lst
+*.su
+*.o
+*.obj
+*.d
+*.a
+*.lib
+*.dep
+*.log
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+.cmake/
+
+# Keep project settings that are intentionally committed
+!.settings/
+!.settings/**
+
+# Editor / IDE local state
+.vscode/.cmake/
+.vscode/ipch/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging/build artifacts
+dist/
+build-python/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+wheelhouse/
+
+# Python notebooks and tooling
+.ipynb_checkpoints/
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+!.env.template
