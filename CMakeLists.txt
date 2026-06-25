@@ -47,6 +47,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     User/lcd/bsp_ili9341_lcd.c
     User/lcd/bsp_xpt2046_lcd.c
     User/font/fonts.c
+    User/app/handwriting_canvas.c
+    User/app/digit_preprocess.c
+    User/app/digit_recognizer.c
+    User/model/PerceptronData.c
 )
 
 # Add include paths
@@ -54,6 +58,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     User
     User/lcd
     User/font
+    User/app
+    User/model
 )
 
 # Add project symbols (macros)

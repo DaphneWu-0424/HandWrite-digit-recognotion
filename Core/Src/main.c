@@ -25,6 +25,8 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_ili9341_lcd.h"
 #include "bsp_xpt2046_lcd.h"
+#include "digit_recognizer.h"
+#include "handwriting_canvas.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,7 +47,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+static uint8_t digit_input[DIGIT_INPUT_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -92,11 +94,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   ILI9341_Init();
   XPT2046_Init();
-
-  LCD_SetColors(WHITE, BLACK);
-  ILI9341_Clear(0, 0, LCD_X_LENGTH, LCD_Y_LENGTH);
-  ILI9341_DispString_EN(10, 10, "HandWrite digit test");
-  ILI9341_DispString_EN(10, 30, "Touch screen to draw");
+  HandwritingCanvas_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,7 +104,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    XPT2046_TouchEvenHandler();
+    HandwritingEvent event = HandwritingCanvas_ProcessTouch(digit_input);
+    if (event == HANDWRITING_EVENT_DIGIT_READY)
+    {
+      DigitRecognitionResult result = DigitRecognizer_Predict(digit_input);
+      HandwritingCanvas_ShowResult(result.digit, result.model_ready);
+    }
   }
   /* USER CODE END 3 */
 }
