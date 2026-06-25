@@ -82,3 +82,5 @@ wheelhouse/
 .env.*
 !.env.example
 !.env.template
+
+data/
