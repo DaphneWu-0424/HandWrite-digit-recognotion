@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usart.h"
 #include "gpio.h"
 #include "fsmc.h"
 
@@ -27,6 +28,7 @@
 #include "bsp_xpt2046_lcd.h"
 #include "digit_recognizer.h"
 #include "handwriting_canvas.h"
+#include "serial_protocol.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -91,9 +93,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_FSMC_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   ILI9341_Init();
   XPT2046_Init();
+  SerialProtocol_Init();
   HandwritingCanvas_Init();
   /* USER CODE END 2 */
 
@@ -107,8 +111,9 @@ int main(void)
     HandwritingEvent event = HandwritingCanvas_ProcessTouch(digit_input);
     if (event == HANDWRITING_EVENT_DIGIT_READY)
     {
-      DigitRecognitionResult result = DigitRecognizer_Predict(digit_input);
-      HandwritingCanvas_ShowResult(result.digit, result.model_ready);
+      DigitTopKResult result = DigitRecognizer_PredictTop3(digit_input);
+      HandwritingCanvas_ShowResult(result.best.digit, result.best.model_ready);
+      SerialProtocol_SendPrediction(&huart1, digit_input, &result);
     }
   }
   /* USER CODE END 3 */

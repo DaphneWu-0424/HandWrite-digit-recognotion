@@ -13,12 +13,12 @@
 #define CANVAS_BYTES ((CANVAS_BITS + 7U) / 8U)
 
 #define OK_X 64U
-#define OK_Y 64U
+#define OK_Y 56U
 #define OK_W 48U
 #define OK_H 24U
 
 #define CLEAR_X 166U
-#define CLEAR_Y 64U
+#define CLEAR_Y 56U
 #define CLEAR_W 66U
 #define CLEAR_H 24U
 
