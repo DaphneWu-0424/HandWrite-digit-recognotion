@@ -33,5 +33,5 @@ The browser cannot scan every system COM port without permission. After the firs
 Example frame sent by the firmware:
 
 ```json
-{"type":"prediction","seq":1,"w":28,"h":28,"pixels":"00FF...","result":1,"top3":[{"digit":1,"scoreMilli":2210},{"digit":7,"scoreMilli":930},{"digit":8,"scoreMilli":410}]}
+{"type":"prediction","seq":1,"model":"mlp64","modelType":"mlp","w":28,"h":28,"pixels":"00FF...","result":1,"top3":[{"digit":1,"scoreMilli":2210},{"digit":7,"scoreMilli":930},{"digit":8,"scoreMilli":410}]}
 ```

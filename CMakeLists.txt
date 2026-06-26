@@ -51,7 +51,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     User/app/digit_preprocess.c
     User/app/digit_recognizer.c
     User/app/serial_protocol.c
-    User/model/PerceptronData.c
+    User/model/ModelData.c
 )
 
 # Add include paths

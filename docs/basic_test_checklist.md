@@ -1,6 +1,6 @@
 # Basic Handwritten Digit Test Checklist
 
-Use this after exporting a trained `PerceptronData.c/h` model and flashing the board.
+Use this after exporting a trained `ModelData.c/h` model and flashing the board.
 
 ## Board Test
 

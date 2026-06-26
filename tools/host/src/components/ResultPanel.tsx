@@ -26,6 +26,14 @@ export function ResultPanel({ frame, status, message }: ResultPanelProps) {
 
       <div className="meta">
         <div>
+          <span>Model</span>
+          <strong>{frame?.model ?? "-"}</strong>
+        </div>
+        <div>
+          <span>Type</span>
+          <strong>{frame?.modelType ?? "-"}</strong>
+        </div>
+        <div>
           <span>Frame</span>
           <strong>{frame?.seq ?? "-"}</strong>
         </div>

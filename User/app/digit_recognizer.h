@@ -29,5 +29,7 @@ typedef struct
 DigitRecognitionResult DigitRecognizer_Predict(const uint8_t input[DIGIT_INPUT_SIZE]);
 DigitTopKResult DigitRecognizer_PredictTop3(const uint8_t input[DIGIT_INPUT_SIZE]);
 bool DigitRecognizer_HasTrainedModel(void);
+const char *DigitRecognizer_ModelName(void);
+const char *DigitRecognizer_ModelTypeName(void);
 
 #endif /* DIGIT_RECOGNIZER_H */

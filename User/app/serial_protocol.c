@@ -75,6 +75,11 @@ bool SerialProtocol_SendPrediction(UART_HandleTypeDef *huart,
 
     if (!write_str(huart, "{\"type\":\"prediction\",\"seq\":")) return false;
     if (!write_u32(huart, s_sequence)) return false;
+    if (!write_str(huart, ",\"model\":\"")) return false;
+    if (!write_str(huart, DigitRecognizer_ModelName())) return false;
+    if (!write_str(huart, "\",\"modelType\":\"")) return false;
+    if (!write_str(huart, DigitRecognizer_ModelTypeName())) return false;
+    if (!write_str(huart, "\"")) return false;
     if (!write_str(huart, ",\"w\":28,\"h\":28,\"pixels\":\"")) return false;
     if (!write_hex_pixels(huart, input)) return false;
     if (!write_str(huart, "\",\"result\":")) return false;
