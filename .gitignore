@@ -81,6 +81,10 @@ wheelhouse/
 # Download cache for generated MNIST sample images
 tools/mnist_samples/raw/
 
+# Web frontend dependencies/build output
+tools/host/node_modules/
+tools/host/dist/
+
 # Local environment / secrets
 .env
 .env.*
