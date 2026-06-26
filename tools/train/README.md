@@ -39,3 +39,32 @@ After export, rebuild the STM32 project. `User/model/ModelData.h` should contain
 ```c
 #define MODEL_GENERATED 1
 ```
+
+## Fine-tune with personal samples
+
+Export `*_samples.jsonl` from the React host and place it under `data/personal/`.
+Only `split=train` samples are used for fine-tuning.
+
+```powershell
+.\.venv\Scripts\python tools\train\finetune_personal.py ^
+  --samples data\personal\20260626_150000_yitia_samples.jsonl ^
+  --base-run tools\train\runs\mlp64_YYYYMMDD_HHMMSS ^
+  --epochs 5 ^
+  --lr 0.0003
+```
+
+Then export the generated run:
+
+```powershell
+.\.venv\Scripts\python tools\train\export_model.py tools\train\runs\mlp64-YYYYMMDD-HHMMSS-yitia\model.npz
+```
+
+Evaluate before/after accuracy on the same personal test split:
+
+```powershell
+.\.venv\Scripts\python tools\train\eval_personal.py ^
+  --samples data\personal\20260626_150000_yitia_samples.jsonl ^
+  --model-a tools\train\runs\mlp64_YYYYMMDD_HHMMSS ^
+  --model-b tools\train\runs\mlp64-YYYYMMDD-HHMMSS-yitia ^
+  --output data\personal\20260626_150000_yitia_eval.json
+```

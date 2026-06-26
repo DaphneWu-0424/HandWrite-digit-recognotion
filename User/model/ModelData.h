@@ -10,7 +10,7 @@
 #define MODEL_CLASS_COUNT 10U
 #define MODEL_HIDDEN_SIZE 64U
 #define MODEL_TYPE MODEL_TYPE_MLP
-#define MODEL_NAME "mlp64"
+#define MODEL_NAME "mlp64-20260626-162302-wuyueying"
 #define MODEL_TYPE_NAME "mlp"
 #define MODEL_GENERATED 1
 

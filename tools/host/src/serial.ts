@@ -11,6 +11,7 @@ export interface SerialCallbacks {
 export class SerialConnection {
   private port: SerialPort | null = null;
   private keepReading = false;
+  private opening = false;
   private readonly decoder = new TextDecoder();
   private buffer = "";
 
@@ -25,6 +26,10 @@ export class SerialConnection {
       this.callbacks.onStatus("unsupported", "Web Serial API is not available.");
       return;
     }
+    if (this.port || this.opening) {
+      this.callbacks.onStatus("connected", "Serial port is already open.");
+      return;
+    }
 
     this.callbacks.onStatus("connecting", "Waiting for port selection...");
     const port = await navigator.serial.requestPort();
@@ -35,6 +40,10 @@ export class SerialConnection {
     if (!navigator.serial) {
       this.callbacks.onStatus("unsupported", "Web Serial API is not available.");
       return false;
+    }
+    if (this.port || this.opening) {
+      this.callbacks.onStatus("connected", "Serial port is already open.");
+      return true;
     }
 
     const ports = await navigator.serial.getPorts();
@@ -63,11 +72,21 @@ export class SerialConnection {
   }
 
   private async openPort(port: SerialPort, baudRate: number): Promise<void> {
-    this.port = port;
-    await port.open({ baudRate });
-    this.keepReading = true;
-    this.callbacks.onStatus("connected", this.describePort(port));
-    void this.readLoop(port);
+    this.opening = true;
+    try {
+      this.port = port;
+      await port.open({ baudRate });
+      this.keepReading = true;
+      this.callbacks.onStatus("connected", this.describePort(port));
+      void this.readLoop(port);
+    } catch (error) {
+      this.port = null;
+      this.keepReading = false;
+      this.callbacks.onStatus("error", error instanceof Error ? error.message : String(error));
+      throw error;
+    } finally {
+      this.opening = false;
+    }
   }
 
   private async readLoop(port: SerialPort): Promise<void> {

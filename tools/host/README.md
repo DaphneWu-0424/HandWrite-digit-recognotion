@@ -28,6 +28,16 @@ The STM32 firmware sends JSON Lines through USART1:
 
 The browser cannot scan every system COM port without permission. After the first `Connect`, authorized ports are available through auto reconnect.
 
+## Local helper
+
+For `Save to local data` and `Train & Export ModelData`, run the helper from repository root:
+
+```powershell
+.\.venv\Scripts\python tools\helper\server.py
+```
+
+The helper writes datasets to `data/personal/<sessionId>/`, runs personal fine-tuning, evaluates before/after accuracy, and exports `User/model/ModelData.c/h`. It does not build or flash firmware.
+
 ## STM32 Frame Shape
 
 Example frame sent by the firmware:
