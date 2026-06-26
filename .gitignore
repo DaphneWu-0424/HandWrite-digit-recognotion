@@ -92,3 +92,4 @@ tools/host/dist/
 !.env.template
 
 data/
+tools/train/runs
