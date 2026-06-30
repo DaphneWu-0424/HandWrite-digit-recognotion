@@ -166,14 +166,14 @@ export function App() {
     }
   };
 
-  const trainAndExport = async (baseRun: string, samplesPath: string) => {
+  const trainAndExport = async (baseRun: string, samplesPath: string, quant: string) => {
     if (!samplesPath) {
       setModal({ title: "Dataset not selected", body: <p>Select a personal dataset before training.</p> });
       return;
     }
     setHelperBusy(true);
     try {
-      const result = await trainExport(samplesPath, baseRun);
+      const result = await trainExport(samplesPath, baseRun, quant);
       setTrainResult(result);
       setHelperStatus("online");
       const [runsResponse, datasetsResponse] = await Promise.all([listRuns(), listPersonalDatasets()]);
@@ -183,11 +183,12 @@ export function App() {
         title: "Fine-tune and export complete",
         body: (
           <>
-            <p>Model: {result.modelName}</p>
+            <p>Model: {result.displayModelName}</p>
+            <p>Quant: {result.quant}</p>
             <p>
               Before: {(result.beforeAccuracy * 100).toFixed(1)}% | After: {(result.afterAccuracy * 100).toFixed(1)}%
             </p>
-            <pre>{`run:\n${result.runDir}\n\nModelData.c:\n${result.modelDataC}\n\nModelData.h:\n${result.modelDataH}\n\nNext:\nBuild with VSCode STM32 plugin, then flash with STM32Programmer.`}</pre>
+            <pre>{`run:\n${result.runDir}\n\nexport record:\n${result.exportRecordPath}\n\nModelData.c:\n${result.modelDataC}\n\nModelData.h:\n${result.modelDataH}\n\nNext:\nBuild with VSCode STM32 plugin, then flash with STM32Programmer.`}</pre>
           </>
         ),
       });

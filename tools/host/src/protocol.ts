@@ -13,6 +13,8 @@ export interface PredictionFrame {
   top3: Top3Item[];
   model: string;
   modelType: string;
+  quant?: string;
+  inferMs?: number;
   receivedAt: number;
   raw: string;
 }
@@ -27,6 +29,8 @@ interface RawPredictionFrame {
   top3: Top3Item[];
   model?: string;
   modelType?: string;
+  quant?: string;
+  inferMs?: number;
 }
 
 function decodeHexPixels(hex: string, expectedLength: number): Uint8Array {
@@ -72,6 +76,8 @@ export function parsePredictionLine(line: string): PredictionFrame | null {
     top3: raw.top3.slice(0, 3),
     model: raw.model ?? "unknown",
     modelType: raw.modelType ?? "unknown",
+    quant: raw.quant,
+    inferMs: raw.inferMs,
     receivedAt: Date.now(),
     raw: trimmed,
   };
@@ -94,6 +100,8 @@ export function createMockFrame(): PredictionFrame {
     result: 1,
     model: "mlp64",
     modelType: "mlp",
+    quant: "fp32",
+    inferMs: 18,
     top3: [
       { digit: 1, scoreMilli: 2210 },
       { digit: 7, scoreMilli: 930 },

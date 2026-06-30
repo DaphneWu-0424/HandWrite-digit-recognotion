@@ -16,10 +16,13 @@ export interface TrainExportResponse {
   samplesPath: string;
   runDir: string;
   evalPath: string;
+  exportRecordPath: string;
   modelDataC: string;
   modelDataH: string;
   modelName: string;
+  displayModelName: string;
   modelType: string;
+  quant: string;
   beforeAccuracy: number;
   afterAccuracy: number;
   deltaAccuracy: number;
@@ -117,9 +120,10 @@ export async function saveDataset(session: CollectionSession, metadata: SessionM
   });
 }
 
-export async function trainExport(samplesPath: string, baseRun: string): Promise<TrainExportResponse> {
+export async function trainExport(samplesPath: string, baseRun: string, quant: string): Promise<TrainExportResponse> {
   return postJson<TrainExportResponse>("/api/train-export", {
     samplesPath,
     baseRun,
+    quant,
   });
 }

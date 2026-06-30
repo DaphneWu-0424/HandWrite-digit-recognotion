@@ -12,6 +12,7 @@
 void SerialProtocol_Init(void);
 bool SerialProtocol_SendPrediction(UART_HandleTypeDef *huart,
                                    const uint8_t input[DIGIT_INPUT_SIZE],
-                                   const DigitTopKResult *result);
+                                   const DigitTopKResult *result,
+                                   uint32_t infer_ms);
 
 #endif /* SERIAL_PROTOCOL_H */

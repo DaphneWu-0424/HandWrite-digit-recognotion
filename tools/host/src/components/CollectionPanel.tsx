@@ -18,7 +18,7 @@ interface CollectionPanelProps {
   onReset(): void;
   onExport(): void;
   onSaveLocal(): void;
-  onTrainExport(baseRun: string, samplesPath: string): void;
+  onTrainExport(baseRun: string, samplesPath: string, quant: string): void;
   helperStatus: string;
   helperBusy: boolean;
   runs: RunInfo[];
@@ -46,6 +46,7 @@ export function CollectionPanel({
   const [shuffle, setShuffle] = useState(true);
   const [baseRun, setBaseRun] = useState("");
   const [personalSamplesPath, setPersonalSamplesPath] = useState("");
+  const [quant, setQuant] = useState("int8");
 
   const target = currentTarget(session);
   const complete = isComplete(session);
@@ -250,8 +251,15 @@ export function CollectionPanel({
                 )}
               </label>
             </div>
+            <label>
+              Export quant
+              <select value={quant} onChange={(event) => setQuant(event.target.value)}>
+                <option value="int8">INT8 (smaller/faster CNN)</option>
+                <option value="fp32">FP32 (baseline)</option>
+              </select>
+            </label>
             <button
-              onClick={() => onTrainExport(baseRun, personalSamplesPath)}
+              onClick={() => onTrainExport(baseRun, personalSamplesPath, quant)}
               disabled={!baseRun.trim() || !personalSamplesPath.trim() || helperBusy}
             >
               Train & Export ModelData

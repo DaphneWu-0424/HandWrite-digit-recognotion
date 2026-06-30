@@ -31,5 +31,6 @@ DigitTopKResult DigitRecognizer_PredictTop3(const uint8_t input[DIGIT_INPUT_SIZE
 bool DigitRecognizer_HasTrainedModel(void);
 const char *DigitRecognizer_ModelName(void);
 const char *DigitRecognizer_ModelTypeName(void);
+const char *DigitRecognizer_ModelQuantName(void);
 
 #endif /* DIGIT_RECOGNIZER_H */

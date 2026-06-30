@@ -93,3 +93,4 @@ tools/host/dist/
 
 data/
 tools/train/runs
+tools/train/runs_smoke/

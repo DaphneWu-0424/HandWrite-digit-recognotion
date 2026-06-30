@@ -111,9 +111,11 @@ int main(void)
     HandwritingEvent event = HandwritingCanvas_ProcessTouch(digit_input);
     if (event == HANDWRITING_EVENT_DIGIT_READY)
     {
+      uint32_t infer_start = HAL_GetTick();
       DigitTopKResult result = DigitRecognizer_PredictTop3(digit_input);
+      uint32_t infer_ms = HAL_GetTick() - infer_start;
       HandwritingCanvas_ShowResult(result.best.digit, result.best.model_ready);
-      SerialProtocol_SendPrediction(&huart1, digit_input, &result);
+      SerialProtocol_SendPrediction(&huart1, digit_input, &result, infer_ms);
     }
   }
   /* USER CODE END 3 */

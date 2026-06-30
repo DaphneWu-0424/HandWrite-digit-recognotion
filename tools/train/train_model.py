@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import time
 from datetime import datetime
@@ -71,12 +72,29 @@ def export_npz(model: nn.Module, model_type: str, model_name: str, hidden_size: 
         )
         return
 
+    if model_type == "cnn":
+        np.savez(
+            output,
+            model_type=model_type,
+            model_name=model_name,
+            input_size=np.int32(INPUT_SIZE),
+            class_count=np.int32(CLASS_COUNT),
+            hidden_size=np.int32(0),
+            conv1_weights=model.conv1.weight.detach().cpu().numpy().astype(np.float32),  # type: ignore[attr-defined]
+            conv1_bias=model.conv1.bias.detach().cpu().numpy().astype(np.float32),  # type: ignore[attr-defined]
+            conv2_weights=model.conv2.weight.detach().cpu().numpy().astype(np.float32),  # type: ignore[attr-defined]
+            conv2_bias=model.conv2.bias.detach().cpu().numpy().astype(np.float32),  # type: ignore[attr-defined]
+            fc_weights=model.fc.weight.detach().cpu().numpy().astype(np.float32),  # type: ignore[attr-defined]
+            fc_bias=model.fc.bias.detach().cpu().numpy().astype(np.float32),  # type: ignore[attr-defined]
+        )
+        return
+
     raise ValueError(f"unsupported model type: {model_type}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train MNIST perceptron or MLP model.")
-    parser.add_argument("--model", choices=["perceptron", "mlp"], default="mlp")
+    parser = argparse.ArgumentParser(description="Train MNIST perceptron, MLP, or CNN model.")
+    parser.add_argument("--model", choices=["perceptron", "mlp", "cnn"], default="mlp")
     parser.add_argument("--hidden", type=int, default=64, help="Hidden size for MLP")
     parser.add_argument("--data-dir", default="data")
     parser.add_argument("--runs-dir", default="tools/train/runs")
@@ -116,6 +134,10 @@ def main() -> None:
 
     started = time.time()
     history: list[dict[str, float | int]] = []
+    best_acc = -1.0
+    best_epoch = 0
+    best_state = copy.deepcopy(model.state_dict())
+    last_acc = 0.0
     for epoch in range(1, args.epochs + 1):
         model.train()
         running_loss = 0.0
@@ -130,19 +152,27 @@ def main() -> None:
 
         train_loss = running_loss / len(train_set)
         test_loss, test_acc = evaluate(model, test_loader, device)
+        last_acc = test_acc
         history.append({"epoch": epoch, "train_loss": train_loss, "test_loss": test_loss, "test_acc": test_acc})
         print(f"epoch={epoch} train_loss={train_loss:.4f} test_loss={test_loss:.4f} test_acc={test_acc:.4f}")
+        if test_acc > best_acc:
+            best_acc = test_acc
+            best_epoch = epoch
+            best_state = copy.deepcopy(model.state_dict())
 
-    _, final_acc = evaluate(model, test_loader, device)
+    model.load_state_dict(best_state)
     elapsed = time.time() - started
     metrics = {
-        "test_acc": final_acc,
+        "test_acc": best_acc,
+        "best_test_acc": best_acc,
+        "best_epoch": best_epoch,
+        "last_test_acc": last_acc,
         "elapsed_sec": elapsed,
         "history": history,
     }
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     export_npz(model, spec.model_type, spec.model_name, spec.hidden_size, run_dir / "model.npz")
-    print(f"saved run to {run_dir}")
+    print(f"saved best run to {run_dir} (best_epoch={best_epoch}, best_test_acc={best_acc:.4f})")
 
 
 if __name__ == "__main__":

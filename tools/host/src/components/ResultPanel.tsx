@@ -34,8 +34,16 @@ export function ResultPanel({ frame, status, message }: ResultPanelProps) {
           <strong>{frame?.modelType ?? "-"}</strong>
         </div>
         <div>
+          <span>Quant</span>
+          <strong>{frame?.quant ?? "-"}</strong>
+        </div>
+        <div>
           <span>Frame</span>
           <strong>{frame?.seq ?? "-"}</strong>
+        </div>
+        <div>
+          <span>Inference</span>
+          <strong>{typeof frame?.inferMs === "number" ? `${frame.inferMs} ms` : "-"}</strong>
         </div>
         <div>
           <span>Received</span>

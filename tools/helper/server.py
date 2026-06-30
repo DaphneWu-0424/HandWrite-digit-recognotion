@@ -49,6 +49,24 @@ def safe_session_id(value: str) -> str:
     return "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in value) or "session"
 
 
+def parse_saved_run_dir(output: str) -> Path | None:
+    marker = "saved fine-tuned run to "
+    for line in output.splitlines():
+        if marker not in line:
+            continue
+
+        run_text = line.split(marker, 1)[1].strip()
+        if " (" in run_text:
+            run_text = run_text.split(" (", 1)[0].strip()
+
+        run_dir = Path(run_text)
+        if not run_dir.is_absolute():
+            run_dir = REPO_ROOT / run_dir
+        return run_dir
+
+    return None
+
+
 def save_dataset(payload: dict[str, Any]) -> dict[str, Any]:
     session = payload.get("session")
     samples = payload.get("samples")
@@ -163,6 +181,9 @@ def train_export(payload: dict[str, Any]) -> dict[str, Any]:
     lr = float(payload.get("lr", 0.0003))
     repeat_personal = int(payload.get("repeatPersonal", 20))
     mnist_limit = int(payload.get("mnistLimit", 10000))
+    quant = str(payload.get("quant", "fp32"))
+    if quant not in {"fp32", "int8"}:
+        raise ValueError("quant must be fp32 or int8")
 
     py = sys.executable
     logs: list[str] = []
@@ -188,13 +209,7 @@ def train_export(payload: dict[str, Any]) -> dict[str, Any]:
     if code != 0:
         raise RuntimeError("fine-tune failed\n" + output)
 
-    run_dir: Path | None = None
-    for line in output.splitlines():
-        marker = "saved fine-tuned run to "
-        if marker in line:
-            run_dir = Path(line.split(marker, 1)[1].strip())
-            if not run_dir.is_absolute():
-                run_dir = REPO_ROOT / run_dir
+    run_dir = parse_saved_run_dir(output)
     if run_dir is None or not run_dir.exists():
         raise RuntimeError("could not determine fine-tuned run directory")
 
@@ -216,22 +231,39 @@ def train_export(payload: dict[str, Any]) -> dict[str, Any]:
     if code != 0:
         raise RuntimeError("evaluation failed\n" + output)
 
-    export_cmd = [py, "tools/train/export_model.py", str(run_dir / "model.npz")]
+    export_cmd = [py, "tools/train/export_model.py", str(run_dir / "model.npz"), "--quant", quant]
     code, output = run_command(export_cmd)
     logs.append(output)
     if code != 0:
         raise RuntimeError("export failed\n" + output)
 
     eval_data = json.loads(eval_path.read_text(encoding="utf-8"))
+    model_name = eval_data["model_b"]["model_name"]
+    display_model_name = f"{model_name}-{quant}"
+    export_record = {
+        "modelName": model_name,
+        "displayModelName": display_model_name,
+        "modelType": eval_data["model_b"]["model_type"],
+        "quant": quant,
+        "modelDataC": str(REPO_ROOT / "User" / "model" / "ModelData.c"),
+        "modelDataH": str(REPO_ROOT / "User" / "model" / "ModelData.h"),
+        "evalPath": str(eval_path),
+    }
+    export_record_path = run_dir / f"export_{quant}.json"
+    export_record_path.write_text(json.dumps(export_record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
     return {
         "datasetDir": str(samples_path.parent),
         "samplesPath": str(samples_path),
         "runDir": str(run_dir),
         "evalPath": str(eval_path),
+        "exportRecordPath": str(export_record_path),
         "modelDataC": str(REPO_ROOT / "User" / "model" / "ModelData.c"),
         "modelDataH": str(REPO_ROOT / "User" / "model" / "ModelData.h"),
-        "modelName": eval_data["model_b"]["model_name"],
+        "modelName": model_name,
+        "displayModelName": display_model_name,
         "modelType": eval_data["model_b"]["model_type"],
+        "quant": quant,
         "beforeAccuracy": eval_data["model_a"]["accuracy"],
         "afterAccuracy": eval_data["model_b"]["accuracy"],
         "deltaAccuracy": eval_data.get("delta_accuracy"),

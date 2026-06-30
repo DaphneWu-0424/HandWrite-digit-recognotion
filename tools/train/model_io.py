@@ -39,6 +39,13 @@ def load_npz_model(model_or_run: str | Path, device: torch.device) -> tuple[nn.M
             hidden.bias.copy_(torch.from_numpy(data["hidden_bias"].astype(np.float32)))
             output_layer.weight.copy_(torch.from_numpy(data["output_weights"].astype(np.float32)))
             output_layer.bias.copy_(torch.from_numpy(data["output_bias"].astype(np.float32)))
+        elif model_type == "cnn":
+            model.conv1.weight.copy_(torch.from_numpy(data["conv1_weights"].astype(np.float32)))  # type: ignore[attr-defined]
+            model.conv1.bias.copy_(torch.from_numpy(data["conv1_bias"].astype(np.float32)))  # type: ignore[attr-defined]
+            model.conv2.weight.copy_(torch.from_numpy(data["conv2_weights"].astype(np.float32)))  # type: ignore[attr-defined]
+            model.conv2.bias.copy_(torch.from_numpy(data["conv2_bias"].astype(np.float32)))  # type: ignore[attr-defined]
+            model.fc.weight.copy_(torch.from_numpy(data["fc_weights"].astype(np.float32)))  # type: ignore[attr-defined]
+            model.fc.bias.copy_(torch.from_numpy(data["fc_bias"].astype(np.float32)))  # type: ignore[attr-defined]
         else:
             raise ValueError(f"unsupported model type: {model_type}")
 

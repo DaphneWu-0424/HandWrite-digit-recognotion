@@ -64,7 +64,8 @@ void SerialProtocol_Init(void)
 
 bool SerialProtocol_SendPrediction(UART_HandleTypeDef *huart,
                                    const uint8_t input[DIGIT_INPUT_SIZE],
-                                   const DigitTopKResult *result)
+                                   const DigitTopKResult *result,
+                                   uint32_t infer_ms)
 {
     if ((huart == NULL) || (input == NULL) || (result == NULL))
     {
@@ -79,7 +80,11 @@ bool SerialProtocol_SendPrediction(UART_HandleTypeDef *huart,
     if (!write_str(huart, DigitRecognizer_ModelName())) return false;
     if (!write_str(huart, "\",\"modelType\":\"")) return false;
     if (!write_str(huart, DigitRecognizer_ModelTypeName())) return false;
+    if (!write_str(huart, "\",\"quant\":\"")) return false;
+    if (!write_str(huart, DigitRecognizer_ModelQuantName())) return false;
     if (!write_str(huart, "\"")) return false;
+    if (!write_str(huart, ",\"inferMs\":")) return false;
+    if (!write_u32(huart, infer_ms)) return false;
     if (!write_str(huart, ",\"w\":28,\"h\":28,\"pixels\":\"")) return false;
     if (!write_hex_pixels(huart, input)) return false;
     if (!write_str(huart, "\",\"result\":")) return false;

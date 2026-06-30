@@ -28,10 +28,22 @@ Export one trained model into the firmware:
 .\.venv\Scripts\python tools\train\export_model.py tools\train\runs\mlp64_YYYYMMDD_HHMMSS\model.npz
 ```
 
+Export Tiny CNN as INT8:
+
+```powershell
+.\.venv\Scripts\python tools\train\export_model.py tools\train\runs\cnn8x16_YYYYMMDD_HHMMSS\model.npz --quant int8
+```
+
 You can still train the old single-layer baseline:
 
 ```powershell
 .\.venv\Scripts\python tools\train\train_model.py --model perceptron --epochs 20 --lr 0.001
+```
+
+Train the Tiny CNN extension:
+
+```powershell
+.\.venv\Scripts\python tools\train\train_model.py --model cnn --epochs 10 --lr 0.001
 ```
 
 After export, rebuild the STM32 project. `User/model/ModelData.h` should contain:

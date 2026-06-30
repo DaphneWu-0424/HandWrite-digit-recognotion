@@ -40,9 +40,25 @@ class MLP(nn.Module):
         return self.net(x)
 
 
+class TinyCNN(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2)
+        self.fc = nn.Linear(16 * 7 * 7, CLASS_COUNT)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.pool(torch.relu(self.conv1(x)))
+        x = self.pool(torch.relu(self.conv2(x)))
+        return self.fc(x.view(x.size(0), -1))
+
+
 def build_model(model_type: str, hidden_size: int) -> tuple[nn.Module, ModelSpec]:
     if model_type == "perceptron":
         return Perceptron(), ModelSpec("perceptron", "perceptron", 0)
     if model_type == "mlp":
         return MLP(hidden_size), ModelSpec("mlp", f"mlp{hidden_size}", hidden_size)
+    if model_type == "cnn":
+        return TinyCNN(), ModelSpec("cnn", "cnn8x16", 0)
     raise ValueError(f"unsupported model type: {model_type}")

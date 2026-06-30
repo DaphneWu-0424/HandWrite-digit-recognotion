@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import time
 from datetime import datetime
@@ -24,7 +25,7 @@ def infer_base_model_path(base_run: str | None) -> Path | None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fine-tune MLP with personal train split samples.")
+    parser = argparse.ArgumentParser(description="Fine-tune MLP/CNN with personal train split samples.")
     parser.add_argument("--samples", required=True, help="Path to exported *_samples.jsonl")
     parser.add_argument("--base-run", default=None, help="Run directory or model.npz to continue from")
     parser.add_argument("--hidden", type=int, default=64)
@@ -47,8 +48,8 @@ def main() -> None:
     if base_path:
         model, loaded_model_type, base_name, hidden_size = load_npz_model(base_path, device)
         model_type = loaded_model_type
-        if model_type != "mlp":
-            raise ValueError("personal fine-tuning currently expects an MLP base model")
+        if model_type not in {"mlp", "cnn"}:
+            raise ValueError("personal fine-tuning currently expects an MLP or CNN base model")
     else:
         model, _ = build_model("mlp", hidden_size)
         model = model.to(device)
@@ -69,12 +70,13 @@ def main() -> None:
 
     first_record = personal_train.records[0]
     safe_person = first_record.person_name.replace(" ", "_")
-    run_model_name = f"mlp{hidden_size}-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_person}"
+    model_prefix = f"mlp{hidden_size}" if model_type == "mlp" else "cnn8x16"
+    run_model_name = f"{model_prefix}-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_person}"
     run_dir = Path(args.runs_dir) / run_model_name
     run_dir.mkdir(parents=True, exist_ok=True)
 
     config = {
-        "model_type": "mlp",
+        "model_type": model_type,
         "model_name": run_model_name,
         "hidden_size": hidden_size,
         "base_model": base_name,
@@ -92,6 +94,10 @@ def main() -> None:
 
     started = time.time()
     history: list[dict[str, float | int]] = []
+    best_acc = -1.0
+    best_epoch = 0
+    best_state = copy.deepcopy(model.state_dict())
+    last_acc = 0.0
     for epoch in range(1, args.epochs + 1):
         model.train()
         running_loss = 0.0
@@ -108,18 +114,26 @@ def main() -> None:
 
         train_loss = running_loss / total if total else 0.0
         test_loss, test_acc = evaluate(model, test_loader, device)
+        last_acc = test_acc
         history.append({"epoch": epoch, "train_loss": train_loss, "test_loss": test_loss, "test_acc": test_acc})
         print(f"epoch={epoch} train_loss={train_loss:.4f} test_loss={test_loss:.4f} test_acc={test_acc:.4f}")
+        if test_acc > best_acc:
+            best_acc = test_acc
+            best_epoch = epoch
+            best_state = copy.deepcopy(model.state_dict())
 
-    _, final_acc = evaluate(model, test_loader, device)
+    model.load_state_dict(best_state)
     metrics = {
-        "test_acc": final_acc,
+        "test_acc": best_acc,
+        "best_test_acc": best_acc,
+        "best_epoch": best_epoch,
+        "last_test_acc": last_acc,
         "elapsed_sec": time.time() - started,
         "history": history,
     }
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     export_npz(model, model_type, run_model_name, hidden_size, run_dir / "model.npz")
-    print(f"saved fine-tuned run to {run_dir}")
+    print(f"saved fine-tuned run to {run_dir} (best_epoch={best_epoch}, best_test_acc={best_acc:.4f})")
 
 
 if __name__ == "__main__":
