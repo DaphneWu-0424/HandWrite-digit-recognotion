@@ -10,15 +10,12 @@ export interface SaveDatasetResponse {
   sampleCount: number;
 }
 
-export interface TrainExportResponse {
+export interface FineTuneResponse {
   ok: true;
   datasetDir: string;
   samplesPath: string;
   runDir: string;
   evalPath: string;
-  exportRecordPath: string;
-  modelDataC: string;
-  modelDataH: string;
   modelName: string;
   displayModelName: string;
   modelType: string;
@@ -29,6 +26,66 @@ export interface TrainExportResponse {
   logs: string;
 }
 
+export interface FirmwareExportResponse {
+  ok: true;
+  runDir: string;
+  exportRecordPath: string;
+  modelDataC: string;
+  modelDataH: string;
+  modelName: string;
+  displayModelName: string;
+  modelType: string;
+  quant: string;
+  logs: string;
+}
+
+export interface PersonalModelMetrics {
+  modelPath: string;
+  modelName: string;
+  modelType: string;
+  hiddenSize: number;
+  accuracy: number;
+  correct: number;
+  total: number;
+  perDigit: Record<string, { accuracy: number | null; correct: number; total: number }>;
+  confusion: number[][];
+}
+
+export interface PersonalEvaluationResponse {
+  ok: true;
+  samplesPath: string;
+  runDir: string;
+  evalPath: string;
+  model: PersonalModelMetrics;
+  record: EvaluationRecord;
+  logs: string;
+}
+
+export interface EvaluationRecord {
+  id: string;
+  createdAt: string;
+  runName: string;
+  runDir: string;
+  modelName: string;
+  modelType: string;
+  quant?: string | null;
+  datasetName: string;
+  samplesPath: string;
+  evalPath: string;
+  accuracy: number;
+  correct: number;
+  total: number;
+}
+
+export interface EvaluationReplaySample {
+  index: number;
+  label: number;
+  prediction: number;
+  correct: boolean;
+  pixelsHex: string;
+  createdAt: string;
+}
+
 export interface RunInfo {
   name: string;
   path: string;
@@ -36,6 +93,7 @@ export interface RunInfo {
   modelName: string;
   modelType: string;
   hiddenSize?: number;
+  quant?: string | null;
   testAcc?: number;
 }
 
@@ -62,6 +120,18 @@ export interface PersonalDatasetsResponse {
   ok: true;
   personalDir: string;
   datasets: PersonalDatasetInfo[];
+}
+
+export interface EvaluationRecordsResponse {
+  ok: true;
+  recordsPath: string;
+  records: EvaluationRecord[];
+}
+
+export interface EvaluationReplayResponse {
+  ok: true;
+  record: EvaluationRecord;
+  samples: EvaluationReplaySample[];
 }
 
 interface ErrorResponse {
@@ -113,6 +183,24 @@ export async function listPersonalDatasets(): Promise<PersonalDatasetsResponse> 
   return data;
 }
 
+export async function listEvaluationRecords(): Promise<EvaluationRecordsResponse> {
+  const response = await fetch(`${HELPER_URL}/api/evaluation-records`);
+  const data = (await response.json()) as EvaluationRecordsResponse | ErrorResponse;
+  if (!response.ok || isErrorResponse(data)) {
+    throw new Error(isErrorResponse(data) ? data.error : "failed to list evaluation records");
+  }
+  return data;
+}
+
+export async function getEvaluationReplay(recordId: string): Promise<EvaluationReplayResponse> {
+  const response = await fetch(`${HELPER_URL}/api/evaluation-replay?id=${encodeURIComponent(recordId)}`);
+  const data = (await response.json()) as EvaluationReplayResponse | ErrorResponse;
+  if (!response.ok || isErrorResponse(data)) {
+    throw new Error(isErrorResponse(data) ? data.error : "failed to load evaluation replay");
+  }
+  return data;
+}
+
 export async function saveDataset(session: CollectionSession, metadata: SessionMetadata): Promise<SaveDatasetResponse> {
   return postJson<SaveDatasetResponse>("/api/datasets", {
     session: metadata,
@@ -120,10 +208,26 @@ export async function saveDataset(session: CollectionSession, metadata: SessionM
   });
 }
 
-export async function trainExport(samplesPath: string, baseRun: string, quant: string): Promise<TrainExportResponse> {
-  return postJson<TrainExportResponse>("/api/train-export", {
+export async function fineTunePersonal(samplesPath: string, baseRun: string, quant: string): Promise<FineTuneResponse> {
+  return postJson<FineTuneResponse>("/api/fine-tune", {
     samplesPath,
     baseRun,
     quant,
+  });
+}
+
+export async function exportFirmwareModel(baseRun: string): Promise<FirmwareExportResponse> {
+  return postJson<FirmwareExportResponse>("/api/export-model", {
+    baseRun,
+  });
+}
+
+export async function evaluatePersonalModel(
+  baseRun: string,
+  samplesPath: string,
+): Promise<PersonalEvaluationResponse> {
+  return postJson<PersonalEvaluationResponse>("/api/evaluate-personal", {
+    baseRun,
+    samplesPath,
   });
 }

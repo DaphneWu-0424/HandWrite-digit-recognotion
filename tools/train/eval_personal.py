@@ -12,12 +12,14 @@ from model_io import load_npz_model
 from personal_dataset import PersonalJsonlDataset
 
 
-def evaluate_personal(model: nn.Module, loader: DataLoader, device: torch.device) -> dict:
+def evaluate_personal(model: nn.Module, dataset: PersonalJsonlDataset, loader: DataLoader, device: torch.device) -> dict:
     model.eval()
     correct = 0
     total = 0
     per_digit = {digit: {"correct": 0, "total": 0} for digit in range(10)}
     confusion = [[0 for _ in range(10)] for _ in range(10)]
+    samples = []
+    sample_index = 0
 
     with torch.no_grad():
         for images, labels in loader:
@@ -29,9 +31,21 @@ def evaluate_personal(model: nn.Module, loader: DataLoader, device: torch.device
             total += labels.numel()
 
             for label, guess in zip(labels.cpu().tolist(), pred.cpu().tolist()):
+                record = dataset.records[sample_index]
                 per_digit[label]["total"] += 1
                 per_digit[label]["correct"] += int(label == guess)
                 confusion[label][guess] += 1
+                samples.append(
+                    {
+                        "index": sample_index,
+                        "label": label,
+                        "prediction": guess,
+                        "correct": label == guess,
+                        "pixels_hex": record.pixels_hex,
+                        "created_at": record.created_at,
+                    }
+                )
+                sample_index += 1
 
     return {
         "accuracy": correct / total if total else 0.0,
@@ -45,6 +59,7 @@ def evaluate_personal(model: nn.Module, loader: DataLoader, device: torch.device
             for digit, stats in per_digit.items()
         },
         "confusion": confusion,
+        "samples": samples,
     }
 
 
@@ -52,7 +67,7 @@ def eval_model(model_path: str, samples: str, device: torch.device, batch_size: 
     model, model_type, model_name, hidden_size = load_npz_model(model_path, device)
     dataset = PersonalJsonlDataset(samples, split="test")
     loader = DataLoader(dataset, batch_size=batch_size)
-    metrics = evaluate_personal(model, loader, device)
+    metrics = evaluate_personal(model, dataset, loader, device)
     return {
         "model_path": str(Path(model_path)),
         "model_name": model_name,

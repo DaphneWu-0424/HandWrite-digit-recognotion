@@ -7,7 +7,6 @@ import {
   type CollectionConfig,
   type CollectionSession,
 } from "../collection";
-import type { PersonalDatasetInfo, RunInfo } from "../helperClient";
 
 interface CollectionPanelProps {
   session: CollectionSession | null;
@@ -18,11 +17,8 @@ interface CollectionPanelProps {
   onReset(): void;
   onExport(): void;
   onSaveLocal(): void;
-  onTrainExport(baseRun: string, samplesPath: string, quant: string): void;
   helperStatus: string;
   helperBusy: boolean;
-  runs: RunInfo[];
-  personalDatasets: PersonalDatasetInfo[];
 }
 
 export function CollectionPanel({
@@ -34,19 +30,13 @@ export function CollectionPanel({
   onReset,
   onExport,
   onSaveLocal,
-  onTrainExport,
   helperStatus,
   helperBusy,
-  runs,
-  personalDatasets,
 }: CollectionPanelProps) {
   const [personName, setPersonName] = useState("");
   const [trainPerDigit, setTrainPerDigit] = useState(3);
   const [testPerDigit, setTestPerDigit] = useState(2);
   const [shuffle, setShuffle] = useState(true);
-  const [baseRun, setBaseRun] = useState("");
-  const [personalSamplesPath, setPersonalSamplesPath] = useState("");
-  const [quant, setQuant] = useState("int8");
 
   const target = currentTarget(session);
   const complete = isComplete(session);
@@ -209,61 +199,7 @@ export function CollectionPanel({
               <span>Helper</span>
               <strong>{helperStatus}</strong>
             </div>
-            <div className="helper-select-grid">
-              <label>
-                Base MLP run
-                {runs.length > 0 ? (
-                  <select value={baseRun} onChange={(event) => setBaseRun(event.target.value)}>
-                    <option value="">Select a trained base run...</option>
-                    {runs.map((run) => (
-                      <option value={run.path} key={run.path}>
-                        {run.name}
-                        {typeof run.testAcc === "number" ? ` | acc ${(run.testAcc * 100).toFixed(1)}%` : ""}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={baseRun}
-                    onChange={(event) => setBaseRun(event.target.value)}
-                    placeholder="tools/train/runs/mlp64_20260626_XXXXXX"
-                  />
-                )}
-              </label>
-              <label>
-                Personal dataset
-                {personalDatasets.length > 0 ? (
-                  <select value={personalSamplesPath} onChange={(event) => setPersonalSamplesPath(event.target.value)}>
-                    <option value="">Select saved personal data...</option>
-                    {personalDatasets.map((dataset) => (
-                      <option value={dataset.samplesPath} key={dataset.samplesPath}>
-                        {dataset.name} | {dataset.sampleCount} samples
-                        {dataset.complete ? " | complete" : ""}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={personalSamplesPath}
-                    onChange={(event) => setPersonalSamplesPath(event.target.value)}
-                    placeholder="data/personal/session/samples.jsonl"
-                  />
-                )}
-              </label>
-            </div>
-            <label>
-              Export quant
-              <select value={quant} onChange={(event) => setQuant(event.target.value)}>
-                <option value="int8">INT8 (smaller/faster CNN)</option>
-                <option value="fp32">FP32 (baseline)</option>
-              </select>
-            </label>
-            <button
-              onClick={() => onTrainExport(baseRun, personalSamplesPath, quant)}
-              disabled={!baseRun.trim() || !personalSamplesPath.trim() || helperBusy}
-            >
-              Train & Export ModelData
-            </button>
+            <p className="muted">Use the Training page to fine-tune and export models.</p>
           </div>
         </>
       )}

@@ -36,6 +36,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.0003)
     parser.add_argument("--repeat-personal", type=int, default=20)
     parser.add_argument("--mnist-limit", type=int, default=10000, help="Limit MNIST samples during fine-tuning")
+    parser.add_argument("--quant-label", default="fp32", choices=["fp32", "int8"], help="Quantization label for the run name")
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
     args = parser.parse_args()
 
@@ -71,7 +72,7 @@ def main() -> None:
     first_record = personal_train.records[0]
     safe_person = first_record.person_name.replace(" ", "_")
     model_prefix = f"mlp{hidden_size}" if model_type == "mlp" else "cnn8x16"
-    run_model_name = f"{model_prefix}-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_person}"
+    run_model_name = f"{model_prefix}-{args.quant_label}-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_person}"
     run_dir = Path(args.runs_dir) / run_model_name
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -84,6 +85,7 @@ def main() -> None:
         "samples": str(Path(args.samples)),
         "personal_train_samples": len(personal_train.records),
         "repeat_personal": args.repeat_personal,
+        "quant": args.quant_label,
         "mnist_limit": args.mnist_limit,
         "epochs": args.epochs,
         "batch_size": args.batch_size,

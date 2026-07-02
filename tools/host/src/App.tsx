@@ -11,26 +11,51 @@ import {
   type CollectionConfig,
   type CollectionSession,
 } from "./collection";
-import { CollectionPanel } from "./components/CollectionPanel";
-import { DigitCanvas } from "./components/DigitCanvas";
 import { Modal } from "./components/Modal";
-import { ResultPanel } from "./components/ResultPanel";
 import {
   checkHelper,
+  evaluatePersonalModel,
+  exportFirmwareModel,
+  fineTunePersonal,
+  listEvaluationRecords,
   listPersonalDatasets,
   listRuns,
   saveDataset,
-  trainExport,
+  type EvaluationRecord,
+  type FineTuneResponse,
+  type PersonalEvaluationResponse,
   type PersonalDatasetInfo,
   type RunInfo,
   type SaveDatasetResponse,
-  type TrainExportResponse,
 } from "./helperClient";
+import { DatasetPage } from "./pages/DatasetPage";
+import { DemoPage } from "./pages/DemoPage";
+import { ReportPage } from "./pages/ReportPage";
+import { TrainingPage } from "./pages/TrainingPage";
 import { createMockFrame, type PredictionFrame } from "./protocol";
 import { SerialConnection, type SerialStatus } from "./serial";
 
 const BAUD_RATE = 115200;
-type Page = "evaluation" | "training";
+type Page = "demo" | "dataset" | "training" | "report";
+
+const pageCopy: Record<Page, { title: string; subtitle: string }> = {
+  demo: {
+    title: "Evaluation",
+    subtitle: "Choose the firmware model, write ModelData, then build, flash, and test over USART1.",
+  },
+  dataset: {
+    title: "Personal Dataset",
+    subtitle: "Collect guided train/test samples for personal fine-tuning.",
+  },
+  training: {
+    title: "Training",
+    subtitle: "Fine-tune a model with personal data without changing firmware parameters.",
+  },
+  report: {
+    title: "Report",
+    subtitle: "Evaluate any model run on a saved personal test split.",
+  },
+};
 
 export function App() {
   const [frame, setFrame] = useState<PredictionFrame | null>(() => createMockFrame());
@@ -42,10 +67,12 @@ export function App() {
   const [helperStatus, setHelperStatus] = useState("unknown");
   const [helperBusy, setHelperBusy] = useState(false);
   const [savedDataset, setSavedDataset] = useState<SaveDatasetResponse | null>(null);
-  const [trainResult, setTrainResult] = useState<TrainExportResponse | null>(null);
+  const [trainResult, setTrainResult] = useState<FineTuneResponse | null>(null);
+  const [reportResult, setReportResult] = useState<PersonalEvaluationResponse | null>(null);
   const [runs, setRuns] = useState<RunInfo[]>([]);
   const [personalDatasets, setPersonalDatasets] = useState<PersonalDatasetInfo[]>([]);
-  const [page, setPage] = useState<Page>("evaluation");
+  const [evaluationRecords, setEvaluationRecords] = useState<EvaluationRecord[]>([]);
+  const [page, setPage] = useState<Page>("demo");
   const [modal, setModal] = useState<{ title: string; body: React.ReactNode } | null>(null);
   const serialRef = useRef<SerialConnection | null>(null);
 
@@ -85,14 +112,42 @@ export function App() {
     void checkHelper()
       .then((root) => {
         setHelperStatus(`online: ${root}`);
-        return Promise.all([listRuns(), listPersonalDatasets()]);
+        return Promise.all([listRuns(), listPersonalDatasets(), listEvaluationRecords()]);
       })
-      .then(([runsData, datasetsData]) => {
+      .then(([runsData, datasetsData, recordsData]) => {
         setRuns(runsData.runs);
         setPersonalDatasets(datasetsData.datasets);
+        setEvaluationRecords(recordsData.records);
       })
       .catch(() => setHelperStatus("offline"));
   }, []);
+
+  useEffect(() => {
+    if (page !== "report") {
+      return;
+    }
+
+    let cancelled = false;
+    const refreshRecords = async () => {
+      try {
+        const recordsData = await listEvaluationRecords();
+        if (!cancelled) {
+          setEvaluationRecords(recordsData.records);
+        }
+      } catch {
+        if (!cancelled) {
+          setHelperStatus("offline");
+        }
+      }
+    };
+
+    void refreshRecords();
+    const timer = window.setInterval(() => void refreshRecords(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [page]);
 
   const connect = async () => {
     try {
@@ -166,35 +221,85 @@ export function App() {
     }
   };
 
-  const trainAndExport = async (baseRun: string, samplesPath: string, quant: string) => {
+  const fineTuneModel = async (baseRun: string, samplesPath: string, quant: string) => {
     if (!samplesPath) {
       setModal({ title: "Dataset not selected", body: <p>Select a personal dataset before training.</p> });
       return;
     }
     setHelperBusy(true);
     try {
-      const result = await trainExport(samplesPath, baseRun, quant);
+      const result = await fineTunePersonal(samplesPath, baseRun, quant);
       setTrainResult(result);
       setHelperStatus("online");
       const [runsResponse, datasetsResponse] = await Promise.all([listRuns(), listPersonalDatasets()]);
       setRuns(runsResponse.runs);
       setPersonalDatasets(datasetsResponse.datasets);
       setModal({
-        title: "Fine-tune and export complete",
+        title: "Fine-tune complete",
         body: (
           <>
             <p>Model: {result.displayModelName}</p>
-            <p>Quant: {result.quant}</p>
+            <p>Run label: {result.quant}</p>
             <p>
               Before: {(result.beforeAccuracy * 100).toFixed(1)}% | After: {(result.afterAccuracy * 100).toFixed(1)}%
             </p>
-            <pre>{`run:\n${result.runDir}\n\nexport record:\n${result.exportRecordPath}\n\nModelData.c:\n${result.modelDataC}\n\nModelData.h:\n${result.modelDataH}\n\nNext:\nBuild with VSCode STM32 plugin, then flash with STM32Programmer.`}</pre>
+            <pre>{`run:\n${result.runDir}\n\npersonal eval:\n${result.evalPath}\n\nNext:\nUse the Evaluation page when you want to write this run into ModelData.c/.h.`}</pre>
           </>
         ),
       });
     } catch (error) {
       setHelperStatus("error");
-      setModal({ title: "Train/export failed", body: <pre>{error instanceof Error ? error.message : String(error)}</pre> });
+      setModal({ title: "Fine-tune failed", body: <pre>{error instanceof Error ? error.message : String(error)}</pre> });
+    } finally {
+      setHelperBusy(false);
+    }
+  };
+
+  const exportSelectedModel = async (baseRun: string) => {
+    if (!baseRun) {
+      setModal({ title: "Model not selected", body: <p>Select a model before writing firmware parameters.</p> });
+      return;
+    }
+    setHelperBusy(true);
+    try {
+      const result = await exportFirmwareModel(baseRun);
+      setHelperStatus("online");
+      const runsResponse = await listRuns();
+      setRuns(runsResponse.runs);
+      setModal({
+        title: "Model parameters written",
+        body: (
+          <>
+            <p>
+              {result.displayModelName} has been written into <code>ModelData.c</code> and <code>ModelData.h</code>.
+            </p>
+            <pre>{`ModelData.c:\n${result.modelDataC}\n\nModelData.h:\n${result.modelDataH}\n\nNext:\nBuild in VSCode, then flash the STM32 manually.`}</pre>
+          </>
+        ),
+      });
+    } catch (error) {
+      setHelperStatus("error");
+      setModal({ title: "Export failed", body: <pre>{error instanceof Error ? error.message : String(error)}</pre> });
+    } finally {
+      setHelperBusy(false);
+    }
+  };
+
+  const evaluateReport = async (baseRun: string, samplesPath: string) => {
+    if (!baseRun || !samplesPath) {
+      setModal({ title: "Evaluation input missing", body: <p>Select both a model and a personal dataset first.</p> });
+      return;
+    }
+    setHelperBusy(true);
+    try {
+      const result = await evaluatePersonalModel(baseRun, samplesPath);
+      setReportResult(result);
+      setHelperStatus("online");
+      const recordsData = await listEvaluationRecords();
+      setEvaluationRecords(recordsData.records);
+    } catch (error) {
+      setHelperStatus("error");
+      setModal({ title: "Evaluation failed", body: <pre>{error instanceof Error ? error.message : String(error)}</pre> });
     } finally {
       setHelperBusy(false);
     }
@@ -205,19 +310,21 @@ export function App() {
       <header className="hero">
         <div>
           <p className="eyebrow">STM32 HandWrite</p>
-          <h1>{page === "evaluation" ? "Manual Evaluation" : "Personal Training"}</h1>
-          <p className="hero-copy">
-            {page === "evaluation"
-              ? "Write on the LCD, press OK, and review the live prediction from USART1."
-              : "Collect personal train/test samples, fine-tune MLP, and export ModelData."}
-          </p>
+          <h1>{pageCopy[page].title}</h1>
+          <p className="hero-copy">{pageCopy[page].subtitle}</p>
         </div>
         <div className="controls">
-          <button className={page === "evaluation" ? "" : "secondary"} onClick={() => setPage("evaluation")}>
+          <button className={page === "demo" ? "" : "secondary"} onClick={() => setPage("demo")}>
             Evaluation
           </button>
+          <button className={page === "dataset" ? "" : "secondary"} onClick={() => setPage("dataset")}>
+            Dataset
+          </button>
           <button className={page === "training" ? "" : "secondary"} onClick={() => setPage("training")}>
-            Personal Training
+            Training
+          </button>
+          <button className={page === "report" ? "" : "secondary"} onClick={() => setPage("report")}>
+            Report
           </button>
           <button onClick={connect} disabled={status === "connecting" || status === "connected"}>
             Connect
@@ -239,27 +346,25 @@ export function App() {
         </div>
       </header>
 
-      {page === "evaluation" ? (
-        <>
-          <div className="dashboard">
-            <DigitCanvas frame={frame} />
-            <ResultPanel frame={frame} status={status} message={message} />
-          </div>
+      {page === "demo" && (
+        <DemoPage
+          frame={frame}
+          status={status}
+          message={message}
+          logs={logs}
+          baudRate={BAUD_RATE}
+          helperStatus={helperStatus}
+          helperBusy={helperBusy}
+          runs={runs}
+          onExportModel={exportSelectedModel}
+        />
+      )}
 
-          <section className="panel log-panel">
-            <div className="panel-header">
-              <div>
-                <p className="eyebrow">Serial Log</p>
-                <h2>Recent frames</h2>
-              </div>
-              <span>{BAUD_RATE} baud</span>
-            </div>
-            <pre>{logs.length ? logs.join("\n") : "No serial frames received yet."}</pre>
-          </section>
-        </>
-      ) : (
-        <CollectionPanel
+      {page === "dataset" && (
+        <DatasetPage
           session={collectionSession}
+          helperStatus={helperStatus}
+          helperBusy={helperBusy}
           onStart={startCollection}
           onAccept={() => setCollectionSession((current) => (current ? acceptPendingSample(current) : current))}
           onRetry={() => setCollectionSession((current) => (current ? retryPendingSample(current) : current))}
@@ -267,11 +372,29 @@ export function App() {
           onReset={() => setCollectionSession(null)}
           onExport={exportDataset}
           onSaveLocal={saveDatasetToLocal}
-          onTrainExport={trainAndExport}
+        />
+      )}
+
+      {page === "training" && (
+        <TrainingPage
+          helperStatus={helperStatus}
+          helperBusy={helperBusy}
+          onFineTune={fineTuneModel}
+          runs={runs}
+          personalDatasets={personalDatasets}
+        />
+      )}
+
+      {page === "report" && (
+        <ReportPage
+          lastTrainResult={trainResult}
           helperStatus={helperStatus}
           helperBusy={helperBusy}
           runs={runs}
           personalDatasets={personalDatasets}
+          reportResult={reportResult}
+          evaluationRecords={evaluationRecords}
+          onEvaluate={evaluateReport}
         />
       )}
       {modal && (

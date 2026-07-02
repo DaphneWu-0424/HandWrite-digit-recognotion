@@ -17,7 +17,7 @@
 #define MODEL_CNN_FC_INPUT_SIZE 784U
 #define MODEL_TYPE MODEL_TYPE_CNN
 #define MODEL_QUANT_TYPE MODEL_QUANT_INT8
-#define MODEL_NAME "cnn8x16-20260630-202610-wuyueying-int8"
+#define MODEL_NAME "cnn8x16-int8-20260702-140745-wuyueying-int8"
 #define MODEL_TYPE_NAME "cnn"
 #define MODEL_QUANT_NAME "int8"
 #define MODEL_GENERATED 1

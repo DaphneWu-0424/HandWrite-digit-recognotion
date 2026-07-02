@@ -30,13 +30,13 @@ The browser cannot scan every system COM port without permission. After the firs
 
 ## Local helper
 
-For `Save to local data` and `Train & Export ModelData`, run the helper from repository root:
+For `Save to local data`, `Start Fine Tuning`, report evaluation, and firmware model export, run the helper from repository root:
 
 ```powershell
 .\.venv\Scripts\python tools\helper\server.py
 ```
 
-The helper writes datasets to `data/personal/<sessionId>/`, runs personal fine-tuning, evaluates before/after accuracy, and exports `User/model/ModelData.c/h`. It does not build or flash firmware.
+The helper writes datasets to `data/personal/<sessionId>/`, runs personal fine-tuning, evaluates before/after accuracy, and saves report rows to `data/reports/evaluation_records.jsonl`. Fine-tuning does not update firmware parameters; `User/model/ModelData.c/h` is written only from the Evaluation page after selecting a model. It does not build or flash firmware.
 
 ## STM32 Frame Shape
 
